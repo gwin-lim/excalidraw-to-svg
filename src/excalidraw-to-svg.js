@@ -1,5 +1,29 @@
 const fs = require("fs"); // used to read in node_module as script
 const jsdom = require("jsdom"); // used to create mock web interface (which excalidraw-utils depends on)
+const cwd = process.cwd();
+const [ excalidrawAssetVendor ] = fs
+  .readdirSync(`${cwd}/node_modules/@excalidraw/excalidraw/dist/excalidraw-assets/`)
+  .filter((f) => f.endsWith('.js'));
+const path2dPolyfill = fs.readFileSync(
+  `${cwd}/node_modules/path2d-polyfill/dist/path2d-polyfill.esm.js`,
+  "utf8"
+);
+const excalidrawAssets = fs.readFileSync(
+  `${cwd}/node_modules/@excalidraw/excalidraw/dist/excalidraw-assets/${excalidrawAssetVendor}`,
+  "utf8"
+);
+const react = fs.readFileSync(
+  `${cwd}/node_modules/react/umd/react.production.min.js`,
+  "utf8"
+);
+const reactDom = fs.readFileSync(
+  `${cwd}/node_modules/react-dom/umd/react-dom.production.min.js`,
+  "utf8"
+);
+const excalidrawUtils = fs.readFileSync(
+  `${cwd}/node_modules/@excalidraw/excalidraw/dist/excalidraw.production.min.js`,
+  "utf8"
+);
 
 /**
  * Function to convert an excalidraw JSON file to an SVG
@@ -9,32 +33,13 @@ const jsdom = require("jsdom"); // used to create mock web interface (which exca
 const excalidrawToSvg = (diagram, w, h, font) => {
   const { JSDOM } = jsdom;
 
-  const react = fs.readFileSync(
-    "./node_modules/react/umd/react.production.min.js",
-    "utf8"
-  );
-
-  const reactDom = fs.readFileSync(
-    "./node_modules/react-dom/umd/react-dom.production.min.js",
-    "utf8"
-  );
-
-  const path2dPolyfill = fs.readFileSync(
-    "./node_modules/path2d-polyfill/dist/path2d-polyfill.esm.js",
-    "utf8"
-  );
-
-  const excalidrawUtils = fs.readFileSync(
-    "./node_modules/@excalidraw/excalidraw/dist/excalidraw.production.min.js",
-    "utf8"
-  );
-
   const stringDiagram = typeof diagram === "string" ? diagram : JSON.stringify(diagram);
 
   const exportScript = `
 		<body>
 			<script>
         ${path2dPolyfill}
+        ${excalidrawAssets}
         ${react}
         ${reactDom}
 				${excalidrawUtils}
@@ -53,6 +58,8 @@ const excalidrawToSvg = (diagram, w, h, font) => {
           }
           const $style = $svg.querySelector('.style-fonts')
           if ($style) $style.remove()
+          const $defs = $svg.querySelector('defs')
+          if (!$defs.childElementCount) $defs.remove()
           return $svg
         }).then(($svg) => {
           $svg
@@ -82,10 +89,7 @@ const excalidrawToSvg = (diagram, w, h, font) => {
         checks = 0;
         return resolve(excalidrawSvg);
       }
-      await new Promise((resolve) => {
-        console.log('checks',checks);
-        setTimeout(resolve, sleepTime);
-      });
+      await new Promise((resolve) => setTimeout(resolve, sleepTime));
     }
     return reject("svg was not created after expected period");
   });
