@@ -15,6 +15,11 @@ const excalidrawToSvg = (diagram) => {
     "utf8"
   );
 
+  const path2dPolyfill = fs.readFileSync(
+    "./node_modules/path2d-polyfill/dist/path2d-polyfill.esm.js",
+    "utf8"
+  );
+
   // if the diagram is not a string, it's probably an object, and we need to stringify it
   const stringDiagram =
     typeof diagram === "string" ? diagram : JSON.stringify(diagram);
@@ -23,6 +28,7 @@ const excalidrawToSvg = (diagram) => {
   const exportScript = `
 		<body>
 			<script>
+        ${path2dPolyfill}
 				${excalidrawUtils}
         const buildSVG = async () => {
           const { exportToSvg } = ExcalidrawUtils

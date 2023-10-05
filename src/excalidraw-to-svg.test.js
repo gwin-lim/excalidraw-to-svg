@@ -1,3 +1,5 @@
+const fs = require("fs");
+const cwd = process.cwd();
 const excalidrawToSvg = require("./excalidraw-to-svg");
 
 const mockDiagram = {
@@ -35,6 +37,18 @@ const mockDiagram = {
 describe("excalidraw-to-svg function", () => {
   it("should render an svg", async () => {
     const svg = await excalidrawToSvg(mockDiagram);
+    expect(svg.outerHTML).toMatch(/<svg/);
+  });
+});
+
+const path2dDiagram = JSON.parse(fs.readFileSync(
+	`${cwd}/diagrams/example.path2d.excalidraw`,
+  "utf-8"
+));
+
+describe("JSDOM runtime got Path2D", () => {
+  it("should render Path2D", async () => {
+    const svg = await excalidrawToSvg(path2dDiagram);
     expect(svg.outerHTML).toMatch(/<svg/);
   });
 });
