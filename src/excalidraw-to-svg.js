@@ -6,12 +6,16 @@ const jsdom = require("jsdom"); // used to create mock web interface (which exca
  * @param {string | object} diagram excalidraw diagram to convert
  * @returns SVG XML Node
  */
-const excalidrawToSvg = (diagram) => {
+const excalidrawToSvg = (diagram, w, h, font) => {
   const { JSDOM } = jsdom;
 
-  // load the node_module excalidraw utils dependency
-  const excalidrawUtils = fs.readFileSync(
-    "./node_modules/@excalidraw/utils/dist/excalidraw-utils.min.js",
+  const react = fs.readFileSync(
+    "./node_modules/react/umd/react.production.min.js",
+    "utf8"
+  );
+
+  const reactDom = fs.readFileSync(
+    "./node_modules/react-dom/umd/react-dom.production.min.js",
     "utf8"
   );
 
@@ -20,25 +24,46 @@ const excalidrawToSvg = (diagram) => {
     "utf8"
   );
 
-  // if the diagram is not a string, it's probably an object, and we need to stringify it
-  const stringDiagram =
-    typeof diagram === "string" ? diagram : JSON.stringify(diagram);
+  const excalidrawUtils = fs.readFileSync(
+    "./node_modules/@excalidraw/excalidraw/dist/excalidraw.production.min.js",
+    "utf8"
+  );
 
-  // create a document with the JSON and export script
+  const stringDiagram = typeof diagram === "string" ? diagram : JSON.stringify(diagram);
+
   const exportScript = `
 		<body>
 			<script>
         ${path2dPolyfill}
+        ${react}
+        ${reactDom}
 				${excalidrawUtils}
-        const buildSVG = async () => {
-          const { exportToSvg } = ExcalidrawUtils
 
-          const diagram = ${stringDiagram}
-          const svg = await exportToSvg(diagram)
+        const { exportToSvg } = ExcalidrawLib
 
-          document.body.appendChild(svg)
-        }
-				buildSVG()
+        const width = ${w}
+        const height = ${h}
+        const diagram = ${stringDiagram}
+        const font = '${font}'
+
+        const $svg = exportToSvg(diagram).then(($svg) => {
+          if (width || height) {
+            $svg.setAttribute('width', width || height)
+            $svg.setAttribute('height', height || width)
+          }
+          const $style = $svg.querySelector('.style-fonts')
+          if ($style) $style.remove()
+          return $svg
+        }).then(($svg) => {
+          $svg
+          .querySelectorAll('[font-family]')
+          .forEach(($text) => {
+            const oldAttr = $text.getAttribute('font-family')
+            const containsVirgil = /virgil/ig.test(oldAttr)
+            $text.setAttribute('font-family', containsVirgil ? 'virgil, ' + font : font)
+          })
+          return $svg
+        }).then(($svg) => document.body.appendChild($svg))
 			</script>
 		</body>
 	`;
@@ -48,17 +73,21 @@ const excalidrawToSvg = (diagram) => {
   // pull the svg and return that Node
   // since this happens asyncronously, we will wait for it to be available
   const svgPromise = new Promise(async (resolve, reject) => {
-    let checks = 20;
-    const sleepTime = 10;
+    let checks = 3;
+    const sleepTime = 1000;
     while (checks > 0) {
       checks--;
       const excalidrawSvg = dom.window.document.body.querySelector("svg");
       if (excalidrawSvg) {
-        resolve(excalidrawSvg);
+        checks = 0;
+        return resolve(excalidrawSvg);
       }
-      await new Promise((resolve) => setTimeout(resolve, sleepTime));
+      await new Promise((resolve) => {
+        console.log('checks',checks);
+        setTimeout(resolve, sleepTime);
+      });
     }
-    reject("svg was not created after expected period");
+    return reject("svg was not created after expected period");
   });
 
   return svgPromise;

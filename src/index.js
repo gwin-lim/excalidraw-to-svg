@@ -1,10 +1,8 @@
 const excalidrawToSvg = require("./excalidraw-to-svg");
 const handleObsiCalidraw = require("./handle-obsidian-excalidraw");
-const obsiCalidrawToSvg = (mdStr) => {
+const obsiCalidrawToSvg = ({mdStr, width, height, font}) => {
   const diagram = handleObsiCalidraw.getObsiCaliDiagram(mdStr);
-  console.log('diagram', diagram);
-  const $svg = excalidrawToSvg(diagram);
-  console.log('$svg ', $svg);
+  const $svg = excalidrawToSvg(diagram, width || height, height || width, font);
   return $svg;
 };
 
